@@ -5,7 +5,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from profile import ORDER, farthest_point, load_sets, max_abs_residual, scatter_svg, summarize
+from profile import (
+    ORDER,
+    farthest_point,
+    load_sets,
+    max_abs_residual,
+    points_beyond,
+    scatter_svg,
+    summarize,
+)
 
 class ProfileTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -40,6 +48,7 @@ class ProfileTests(unittest.TestCase):
             self.assertIn(point, self.sets[name])
         self.assertEqual(farthest_point(self.sets["III"])[0], 13)
         self.assertEqual(farthest_point(self.sets["IV"])[0], 8)
+        self.assertGreater(points_beyond(self.sets["III"]), points_beyond(self.sets["I"]))
 
     def test_svg_draws_every_point(self) -> None:
         svg = scatter_svg(self.sets)

@@ -60,6 +60,12 @@ def max_abs_residual(points: list[tuple[float, float]]) -> float:
     return max(abs(y - (intercept + slope * x)) for x, y in points)
 
 
+def points_beyond(points: list[tuple[float, float]], gap: float = 2.0) -> int:
+    """How many points sit farther than `gap` from the fitted line."""
+    slope, intercept = _fit_line(points)
+    return sum(abs(y - (intercept + slope * x)) > gap for x, y in points)
+
+
 def farthest_point(points: list[tuple[float, float]]) -> tuple[float, float]:
     """The point that sits farthest from the least-squares line."""
     slope, intercept = _fit_line(points)
