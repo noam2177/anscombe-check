@@ -38,6 +38,18 @@ def pearson(xs: list[float], ys: list[float]) -> float:
     return sxy / (sxx * syy) ** 0.5
 
 
+def max_abs_residual(points: list[tuple[float, float]]) -> float:
+    """Largest gap between a point and the least-squares line."""
+    xs = [x for x, _ in points]
+    ys = [y for _, y in points]
+    mx, my = _mean(xs), _mean(ys)
+    sxx = sum((x - mx) ** 2 for x in xs)
+    sxy = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    slope = sxy / sxx
+    intercept = my - slope * mx
+    return max(abs(y - (intercept + slope * x)) for x, y in points)
+
+
 def summarize(points: list[tuple[float, float]]) -> dict[str, float]:
     xs = [x for x, _ in points]
     ys = [y for _, y in points]
@@ -63,8 +75,17 @@ def format_report(sets: dict[str, list[tuple[float, float]]]) -> str:
     return "\n".join(lines)
 
 
+def format_residuals(sets: dict[str, list[tuple[float, float]]]) -> str:
+    lines = ["set   max_abs_residual"]
+    for name in ORDER:
+        lines.append(f"{name:<4} {max_abs_residual(sets[name]):8.3f}")
+    return "\n".join(lines)
+
+
 def main() -> None:
-    print(format_report(load_sets()))
+    sets = load_sets()
+    print(format_report(sets))
+    print(format_residuals(sets))
 
 
 if __name__ == "__main__":
