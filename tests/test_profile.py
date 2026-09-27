@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from profile import ORDER, load_sets, max_abs_residual, summarize
+from profile import ORDER, farthest_point, load_sets, max_abs_residual, scatter_svg, summarize
 
 class ProfileTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -25,6 +25,7 @@ class ProfileTests(unittest.TestCase):
             self.assertAlmostEqual(row["var_x"], 11.0, places=3)
             self.assertAlmostEqual(row["var_y"], 4.125, places=2)
             self.assertAlmostEqual(row["corr"], 0.816, places=2)
+            self.assertAlmostEqual(row["r2"], row["corr"] ** 2, places=3)
 
     def test_set_iii_sits_farther_from_the_line(self) -> None:
         far = max_abs_residual(self.sets["III"])
@@ -32,6 +33,20 @@ class ProfileTests(unittest.TestCase):
         self.assertGreater(far, near)
         self.assertGreater(far, 3.0)
         self.assertLess(near, 2.0)
+
+    def test_farthest_point_is_a_real_row(self) -> None:
+        for name in ORDER:
+            point = farthest_point(self.sets[name])
+            self.assertIn(point, self.sets[name])
+        self.assertEqual(farthest_point(self.sets["III"])[0], 13)
+        self.assertEqual(farthest_point(self.sets["IV"])[0], 8)
+
+    def test_svg_draws_every_point(self) -> None:
+        svg = scatter_svg(self.sets)
+        self.assertEqual(svg.count("<circle "), 48)
+        self.assertEqual(svg.count('stroke="#c4552a"'), 4)
+        for name in ORDER:
+            self.assertIn(f">{name}<", svg)
 
     def test_set_iv_x_is_almost_constant(self) -> None:
         xs = [x for x, _ in self.sets["IV"]]

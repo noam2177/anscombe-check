@@ -30,6 +30,12 @@ def sample_variance(values: list[float]) -> float:
     return sum((value - center) ** 2 for value in values) / (len(values) - 1)
 
 
+def r_squared(xs: list[float], ys: list[float]) -> float:
+    """Share of y variance on the fitted line. Same number for all four series."""
+    value = pearson(xs, ys)
+    return value * value
+
+
 def pearson(xs: list[float], ys: list[float]) -> float:
     mx, my = _mean(xs), _mean(ys)
     sxy = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
@@ -38,16 +44,26 @@ def pearson(xs: list[float], ys: list[float]) -> float:
     return sxy / (sxx * syy) ** 0.5
 
 
-def max_abs_residual(points: list[tuple[float, float]]) -> float:
-    """Largest gap between a point and the least-squares line."""
+def _fit_line(points: list[tuple[float, float]]) -> tuple[float, float]:
     xs = [x for x, _ in points]
     ys = [y for _, y in points]
     mx, my = _mean(xs), _mean(ys)
     sxx = sum((x - mx) ** 2 for x in xs)
     sxy = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
     slope = sxy / sxx
-    intercept = my - slope * mx
+    return slope, my - slope * mx
+
+
+def max_abs_residual(points: list[tuple[float, float]]) -> float:
+    """Largest gap between a point and the least-squares line."""
+    slope, intercept = _fit_line(points)
     return max(abs(y - (intercept + slope * x)) for x, y in points)
+
+
+def farthest_point(points: list[tuple[float, float]]) -> tuple[float, float]:
+    """The point that sits farthest from the least-squares line."""
+    slope, intercept = _fit_line(points)
+    return max(points, key=lambda point: abs(point[1] - (intercept + slope * point[0])))
 
 
 def summarize(points: list[tuple[float, float]]) -> dict[str, float]:
@@ -60,6 +76,7 @@ def summarize(points: list[tuple[float, float]]) -> dict[str, float]:
         "var_x": sample_variance(xs),
         "var_y": sample_variance(ys),
         "corr": pearson(xs, ys),
+        "r2": r_squared(xs, ys),
     }
 
 
@@ -76,16 +93,40 @@ def format_report(sets: dict[str, list[tuple[float, float]]]) -> str:
 
 
 def format_residuals(sets: dict[str, list[tuple[float, float]]]) -> str:
-    lines = ["set   max_abs_residual"]
+    lines = ["set   max_abs_residual   point"]
     for name in ORDER:
-        lines.append(f"{name:<4} {max_abs_residual(sets[name]):8.3f}")
+        x, y = farthest_point(sets[name])
+        lines.append(f"{name:<4} {max_abs_residual(sets[name]):8.3f}   {x:.3f},{y:.3f}")
     return "\n".join(lines)
+
+
+def scatter_svg(sets: dict[str, list[tuple[float, float]]]) -> str:
+    """Four panels. Same axes, so the shared summary does not hide the shape."""
+    parts = [
+        '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="180" viewBox="0 0 640 180">',
+        '<rect width="640" height="180" fill="#f7f4ef"/>',
+    ]
+    for index, name in enumerate(ORDER):
+        left = 16 + index * 156
+        parts.append(f'<text x="{left}" y="18" font-size="14" font-family="sans-serif">{name}</text>')
+        far = farthest_point(sets[name])
+        for x, y in sets[name]:
+            px = left + (x - 3) / 17 * 130
+            py = 160 - (y - 2) / 12 * 130
+            if (x, y) == far:
+                parts.append(
+                    f'<circle cx="{px:.1f}" cy="{py:.1f}" r="5.2" fill="none" stroke="#c4552a" stroke-width="1.4"/>'
+                )
+            parts.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="3.2" fill="#1f4b4a"/>')
+    parts.append("</svg>")
+    return "\n".join(parts)
 
 
 def main() -> None:
     sets = load_sets()
     print(format_report(sets))
     print(format_residuals(sets))
+    (ROOT / "anscombe.svg").write_text(scatter_svg(sets), encoding="utf-8")
 
 
 if __name__ == "__main__":
